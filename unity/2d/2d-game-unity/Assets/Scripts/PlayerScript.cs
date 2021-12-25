@@ -97,4 +97,11 @@ public class PlayerScript : MonoBehaviour
             }
         }
     }
+
+    void OnDestroy()
+    {
+        // 銷毀 遊戲結束
+        var gameOver = FindObjectOfType<GameOverScript>();
+        gameOver.ShowButtons();
+    }
 }
