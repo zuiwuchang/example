@@ -1,0 +1,55 @@
+syntax = "proto3";
+
+package jsgenerate_server.api;
+option go_package = "server/protocol/api";
+
+import "google/api/annotations.proto";
+
+service V1 {
+    rpc Get (GetRequest) returns (GetResponse){
+        option (google.api.http) = {
+            get: "/api/v1/get"
+        };
+    }
+    rpc Post (PostRequest) returns (PostResponse){
+        option (google.api.http) = {
+            post: "/api/v1/post"
+            body: "*"
+        };
+    }
+    // /api/v1/stream
+    rpc Stream (stream StreamRequest) returns (stream StreamResponse){}
+}
+service V2 {
+    rpc Get (GetRequest) returns (GetResponse){
+        option (google.api.http) = {
+            get: "/api/v2/get"
+        };
+    }
+    rpc Post (PostRequest) returns (PostResponse){
+        option (google.api.http) = {
+            post: "/api/v2/post"
+            body: "*"
+        };
+    }
+     // /api/v2/stream
+    rpc Stream (stream StreamRequest) returns (stream StreamResponse){}
+}
+message GetRequest{
+    string value=1;
+}
+message GetResponse{
+    string value=1;
+}
+message PostRequest{
+    string value=1;
+}
+message PostResponse{
+    string value=1;
+}
+message StreamRequest{
+    string value=1;
+}
+message StreamResponse{
+    string value=1;
+}
