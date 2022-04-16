@@ -1,7 +1,7 @@
 Target="server"
 Docker="king011/k8s-ingress-nginx-example-server"
 Dir=$(cd "$(dirname $BASH_SOURCE)/.." && pwd)
-Version="0.0.1"
+Version="0.0.2"
 Platforms=(
     linux/amd64
 )

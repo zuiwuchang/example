@@ -6,14 +6,16 @@ server 是一個用於測試的 服務器與客戶端
 
 以服務器運行
 ```
-export ExampleAddr=127.0.0.1:8080
+export ExampleAddr=127.0.0.1:9000
 export ExampleMode=server
 ./bin/server
 ```
 
 以 客戶端 運行
 ```
-export ExampleAddr=127.0.0.1:8080
+export ExampleAddr=127.0.0.1:9000
+export ExampleH2=1 # enable h2 client
+export ExampleH2=0
 export ExampleClient=http
 export ExampleClient=grpc
 export ExampleMode=client

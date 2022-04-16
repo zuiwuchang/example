@@ -3,7 +3,9 @@ package main
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"io"
 	"log"
@@ -14,13 +16,30 @@ import (
 	"time"
 
 	grpc_api "server/protocol/api"
+	_version "server/version"
 
 	"github.com/gorilla/websocket"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 )
 
 func main() {
+	var (
+		help    bool
+		version bool
+	)
+	flag.BoolVar(&help, `help`, false, `dsiplay help`)
+	flag.BoolVar(&version, `version`, false, `dsiplay version`)
+	flag.Parse()
+	if help {
+		flag.PrintDefaults()
+		return
+	} else if version {
+		fmt.Println(_version.Version)
+		return
+	}
+
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	addr := os.Getenv("ExampleAddr")
 	if addr == "" {
@@ -51,23 +70,36 @@ func printHelp(http bool) {
  * http set http client
  * h print help`)
 }
+func newGrpcClient(addr string, h2 bool) (*grpc.ClientConn, error) {
+	if h2 {
+		return grpc.Dial(addr,
+			grpc.WithTransportCredentials(
+				credentials.NewTLS(&tls.Config{
+					InsecureSkipVerify: true,
+				}),
+			),
+		)
+	} else {
+		return grpc.Dial(addr,
+			grpc.WithTransportCredentials(insecure.NewCredentials()),
+		)
+	}
+
+}
 func runClient(addr string) {
 	c := os.Getenv("ExampleClient")
+	val := os.Getenv("ExampleH2")
+	h2 := val != "" && val != "false" && val != "0"
 	var cc *grpc.ClientConn
 	var client *HttpClient
 	if c == "grpc" {
 		var e error
-		cc, e = grpc.Dial(addr,
-			grpc.WithTransportCredentials(insecure.NewCredentials()),
-		)
+		cc, e = newGrpcClient(addr, h2)
 		if e != nil {
 			log.Fatalln(e)
 		}
 	} else if c == "http" {
-		client = &HttpClient{
-			addr:   addr,
-			client: &http.Client{},
-		}
+		client = newHttpClient(addr, h2)
 	} else {
 		log.Fatalln("env 'ExampleClient' only supported 'grpc' or 'http'")
 	}
@@ -94,9 +126,7 @@ func runClient(addr string) {
 		case "grpc":
 			if cc == nil {
 				var e error
-				cc, e = grpc.Dial(addr,
-					grpc.WithTransportCredentials(insecure.NewCredentials()),
-				)
+				cc, e = newGrpcClient(addr, h2)
 				if e == nil {
 					client = nil
 				} else {
@@ -107,10 +137,7 @@ func runClient(addr string) {
 			if client == nil {
 				cc.Close()
 				cc = nil
-				client = &HttpClient{
-					addr:   addr,
-					client: &http.Client{},
-				}
+				client = newHttpClient(addr, h2)
 			}
 		default:
 			fmt.Println("not support commnad")
@@ -119,12 +146,48 @@ func runClient(addr string) {
 }
 
 type HttpClient struct {
+	h2     bool
 	addr   string
 	client *http.Client
+	dialer *websocket.Dialer
 }
 
+func newHttpClient(addr string, h2 bool) *HttpClient {
+	var transport http.RoundTripper
+	var dialer *websocket.Dialer
+	if h2 {
+		conf := &tls.Config{InsecureSkipVerify: true}
+		transport = &http.Transport{
+			TLSClientConfig: conf,
+		}
+		dialer = &websocket.Dialer{
+			Proxy:            http.ProxyFromEnvironment,
+			HandshakeTimeout: 45 * time.Second,
+			TLSClientConfig:  conf,
+		}
+	} else {
+		dialer = websocket.DefaultDialer
+	}
+	return &HttpClient{
+		addr: addr,
+		h2:   h2,
+		client: &http.Client{
+			Transport: transport,
+		},
+		dialer: dialer,
+	}
+}
+func (h *HttpClient) url(path string) string {
+	var scheme string
+	if h.h2 {
+		scheme = `https://`
+	} else {
+		scheme = `http://`
+	}
+	return scheme + h.addr + path
+}
 func (h *HttpClient) Get(path, value string) {
-	resp, e := h.client.Get(`http://` + h.addr + path + "?" + url.Values{
+	resp, e := h.client.Get(h.url(path) + "?" + url.Values{
 		`value`: {value},
 	}.Encode())
 	if e != nil {
@@ -148,7 +211,7 @@ func (h *HttpClient) Post(path, value string) {
 		log.Println(e)
 		return
 	}
-	resp, e := h.client.Post(`http://`+h.addr+path, `application/json; charset=utf-8`, bytes.NewReader(b))
+	resp, e := h.client.Post(h.url(path), `application/json; charset=utf-8`, bytes.NewReader(b))
 	if e != nil {
 		log.Println(e)
 		return
@@ -162,7 +225,13 @@ func (h *HttpClient) Post(path, value string) {
 	fmt.Println("success", string(b))
 }
 func (h *HttpClient) Stream(path string) {
-	ws, _, e := websocket.DefaultDialer.Dial(`ws://`+h.addr+path, nil)
+	var scheme string
+	if h.h2 {
+		scheme = `wss://`
+	} else {
+		scheme = `ws://`
+	}
+	ws, _, e := h.dialer.Dial(scheme+h.addr+path, nil)
 	if e != nil {
 		log.Println(e)
 		return

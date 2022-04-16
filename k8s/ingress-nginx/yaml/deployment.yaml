@@ -1,0 +1,49 @@
+# 創建 v1 應用
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+    namespace: demo-ingress
+    name: demo-v1
+    labels:
+        app: demo-v1
+spec:
+    replicas: 2
+    selector:
+        matchLabels:
+            app: demo-v1
+    template: # 容器模板
+        metadata:
+            labels:
+                app: demo-v1
+        spec:
+            containers:
+                - image: king011/k8s-ingress-nginx-example-server:0.0.2
+                  name: demo-v1
+                  env:
+                      - name: ExampleAddr
+                        value: ":9000"
+---
+# 創建 v2 應用
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+    namespace: demo-ingress
+    name: demo-v2
+    labels:
+        app: demo-v2
+spec:
+    replicas: 2
+    selector:
+        matchLabels:
+            app: demo-v2
+    template: # 容器模板
+        metadata:
+            labels:
+                app: demo-v2
+        spec:
+            containers:
+                - image: king011/k8s-ingress-nginx-example-server:0.0.2
+                  name: demo-v2
+                  env:
+                      - name: ExampleAddr
+                        value: ":9000"
