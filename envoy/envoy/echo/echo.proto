@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package echo.server;
+option go_package = "echo/server";
+
+service Server {
+    rpc Echo (stream EchoRequest) returns (stream EchoResponse);
+}
+message EchoRequest{
+    string message=1;
+}
+message EchoResponse{
+    string message=1;
+}

@@ -1,0 +1,15 @@
+version: '1'
+services:
+  envoy:
+    image: "envoyproxy/envoy:v1.22.5"
+    restart: always
+    volumes:
+      - ./envoy.yaml:/etc/envoy/envoy.yaml:ro
+    ports:
+      - 9000:80
+  echo1:
+    image: "king011/envoy-echo:latest"
+    restart: always
+  echo2:
+    image: "king011/envoy-echo:latest"
+    restart: always
